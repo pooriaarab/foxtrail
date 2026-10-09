@@ -143,9 +143,12 @@ The key file holds the key as hex. Without `--key`, the CLI reads `FOXTRAIL_KEY`
 | 1 | The log is bad. The first bad line is on stderr, for example `line 3: bad-hash: Entry 2 was edited…`. |
 | 2 | The command cannot run: no key, no file, or a wrong option. |
 
-## Demo extension
+## Firefox extension
 
-The `extension/` folder holds a demo for Firefox. Its popup records demo events, races two writers on one `IdbStore`, verifies the log, and exports JSONL and a checkpoint.
+The `extension/` folder holds an add-on for Firefox that shows foxtrail at work. Its popup records sample events, races two writers on one `IdbStore`, verifies the log, and exports JSONL and a checkpoint.
+
+Install from AMO: [addons.mozilla.org/firefox/addon/foxtrail](https://addons.mozilla.org/firefox/addon/foxtrail/)
+(pending AMO review; the link works after approval).
 
 Build and test it:
 
@@ -155,7 +158,7 @@ pnpm build:ext   # writes dist-ext/
 pnpm e2e         # real Firefox: record, export, verify with the CLI, tamper, verify again
 ```
 
-The E2E test writes `artifacts/e2e-<date>.json`. The demo key is extractable so that the CLI can verify the export. Use `generateKey()` without `extractable` when only your own code verifies the log.
+The E2E test writes `artifacts/e2e-<date>.json`. The add-on's key is extractable so that the CLI can verify the export. Use `generateKey()` without `extractable` when only your own code verifies the log.
 
 ## Firefox APIs used
 
