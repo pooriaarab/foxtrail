@@ -55,7 +55,7 @@ export async function run(args: string[], io: Io): Promise<number> {
       throw new Error(`Cannot read ${options.file}.`);
     });
     let checkpoint: Checkpoint | undefined;
-    if (options.checkpoint) {
+    if (options.checkpoint !== undefined) {
       const raw = await readFile(options.checkpoint, "utf8").catch(() => {
         throw new Error(`Cannot read ${options.checkpoint}.`);
       });
@@ -63,6 +63,9 @@ export async function run(args: string[], io: Io): Promise<number> {
         checkpoint = JSON.parse(raw) as Checkpoint;
       } catch {
         throw new Error(`${options.checkpoint} is not JSON.`);
+      }
+      if (typeof checkpoint !== "object" || checkpoint === null || Array.isArray(checkpoint)) {
+        throw new Error(`${options.checkpoint} does not hold a checkpoint object.`);
       }
     }
     const parsed = parseJsonl(text);
