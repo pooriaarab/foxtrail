@@ -1,4 +1,5 @@
-import { open, readFile, stat, unlink } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { open, readFile, rename, stat, unlink } from "node:fs/promises";
 import { GENESIS } from "./constants.js";
 import { ConflictError, StoreError } from "./errors.js";
 import { parseJsonl } from "./jsonl.js";
@@ -13,10 +14,13 @@ const missing = (error: unknown) => (error as NodeJS.ErrnoException).code === "E
 export class FileStore implements Store {
   readonly #path: string;
   readonly #timeout: number;
+  readonly #beforeRelease?: () => Promise<void>;
 
-  constructor(path: string, options: { lockTimeoutMs?: number } = {}) {
+  /** `beforeRelease` is a test hook. It runs after the write, while the lock is still held. */
+  constructor(path: string, options: { lockTimeoutMs?: number; beforeRelease?: () => Promise<void> } = {}) {
     this.#path = path;
     this.#timeout = options.lockTimeoutMs ?? 5_000;
+    this.#beforeRelease = options.beforeRelease;
   }
 
   async all(): Promise<Entry[]> {
@@ -74,7 +78,7 @@ export class FileStore implements Store {
   }
 
   async append(entry: Entry): Promise<void> {
-    await this.#lock();
+    const token = await this.#lock();
     try {
       const last = await this.last();
       if (entry.seq !== (last ? last.seq + 1 : 0) || entry.prev !== (last?.hash ?? GENESIS)) {
@@ -87,25 +91,51 @@ export class FileStore implements Store {
       } finally {
         await handle.close();
       }
+      await this.#beforeRelease?.();
+      // Backstop: if the lock was lost, another writer may have added a line.
+      if ((await this.last())?.hash !== entry.hash) throw new StoreError("Another writer changed the file while this entry was written.");
     } finally {
-      await unlink(`${this.#path}.lock`).catch(() => {});
+      await this.#release(token);
     }
   }
 
-  async #lock(): Promise<void> {
+  /** Remove the lock only when it still holds our token. */
+  async #release(token: string): Promise<void> {
     const lock = `${this.#path}.lock`;
+    if ((await readFile(lock, "utf8").catch(() => undefined)) === token) await unlink(lock).catch(() => {});
+  }
+
+  /** Take the lock file. It holds a random token, so only its owner can release it. */
+  async #lock(): Promise<string> {
+    const lock = `${this.#path}.lock`;
+    const token = randomUUID();
     const deadline = Date.now() + this.#timeout;
     for (;;) {
       try {
-        await (await open(lock, "wx", 0o600)).close();
-        return;
+        const handle = await open(lock, "wx", 0o600);
+        await handle.write(token);
+        await handle.close();
+        return token;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
       }
+      const seen = await readFile(lock, "utf8").catch(() => undefined);
       const age = await stat(lock).then((s) => Date.now() - s.mtimeMs, () => 0);
-      if (age > STALE_LOCK_MS) await unlink(lock).catch(() => {});
+      if (age > STALE_LOCK_MS && seen !== undefined) await this.#takeStale(lock, seen, token);
       else if (Date.now() > deadline) throw new StoreError(`The lock file ${lock} stays. Remove it if no process uses the log.`);
       else await sleep(5 + Math.random() * 20);
     }
+  }
+
+  /** Move a stale lock away. The rename is atomic, so one writer wins. */
+  async #takeStale(lock: string, seen: string, token: string): Promise<void> {
+    const moved = `${lock}.${token}.stale`;
+    if (await rename(lock, moved).then(() => false, () => true)) return;
+    if ((await readFile(moved, "utf8").catch(() => undefined)) !== seen) {
+      // We moved a fresh lock, not the stale one. Put it back.
+      await rename(moved, lock).catch(() => {});
+      return;
+    }
+    await unlink(moved).catch(() => {});
   }
 }

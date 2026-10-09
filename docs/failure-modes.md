@@ -153,3 +153,11 @@ CLI on the export.
 |---|---|---|---|
 | J8 | A line has the same key twice, at any depth, so parsers disagree on the value. | `parseJsonl()` names the line. The CLI exits 1. | `tests/jsonl.test.ts` |
 | J9 | A repeated key hides behind an escape (`"a"` and `"a"`), or sits in a string value. | The escaped repeat is found. A key name inside a string value is not a repeat. | `tests/jsonl.test.ts` |
+
+## Review fixes: the lock file
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| F10 | A slow writer ends after another writer took its stale lock. | The slow writer does not remove the new lock. | `tests/file.test.ts` |
+| F11 | Many writers find one stale lock at once. | One takes it. The chain stays valid. | `tests/file.test.ts` |
+| F12 | A writer loses its lock and another entry lands first. | `append()` throws `StoreError` and does not report success. | `tests/file.test.ts` |
