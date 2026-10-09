@@ -21,3 +21,17 @@ export class KeyError extends FoxtrailError {
     super("key", message);
   }
 }
+
+/** The entry is larger than the `maxEntryBytes` limit. */
+export class EntryTooLargeError extends FoxtrailError {
+  constructor(message: string) {
+    super("entry-too-large", message);
+  }
+}
+
+/** A store refused an entry because the log moved on. The caller retries. */
+export class ConflictError extends FoxtrailError {
+  constructor(message: string) {
+    super("conflict", message);
+  }
+}

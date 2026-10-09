@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { canonicalize } from "../src/canonical.js";
 import { GENESIS } from "../src/constants.js";
+import { sha256Hex } from "../src/crypto.js";
 import { ConflictError, EntryTooLargeError, InvalidEntryError, KeyError } from "../src/errors.js";
 import { generateKey } from "../src/keys.js";
 import { Log } from "../src/log.js";
