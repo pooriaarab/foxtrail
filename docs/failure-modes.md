@@ -89,3 +89,17 @@ One entry per line, fields in a fixed order, each line ends with `\n`.
 | J5 | The file starts with a byte order mark, or uses `\r\n`. | Both parse and verify. | `tests/jsonl.test.ts` |
 | J6 | `importJsonl()` gets a log that does not verify. | It throws. The store stays empty. | `tests/jsonl.test.ts` |
 | J7 | `importJsonl()` runs on a store that has entries. | `ConflictError`. | `tests/jsonl.test.ts` |
+
+## Node file store and key file
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| F1 | Two `Log` objects append to one file at the same time. | A lock file orders the writes. The chain verifies. | `tests/file.test.ts` |
+| F2 | A crash leaves a last line with no newline. | `append()` and `all()` throw `StoreError`. The file stays as it is. | `tests/file.test.ts` |
+| F3 | One entry is far larger than the read chunk. | It is stored, and `last()` reads it back. | `tests/file.test.ts` |
+| F4 | The file does not exist yet. | The store is empty. The first append creates the file with mode 0600. | `tests/file.test.ts` |
+| F5 | A lock file is old, because a process died. | The store removes it and goes on. | `tests/file.test.ts` |
+| F6 | A lock file is fresh and stays. | `StoreError` after `lockTimeoutMs`. | `tests/file.test.ts` |
+| F7 | A key file is made twice. | The second call reads the same key. The file has mode 0600. | `tests/keyfile.test.ts` |
+| F8 | A key file holds bad text, or neither a file nor `FOXTRAIL_KEY` is given. | `KeyError`. | `tests/keyfile.test.ts` |
+| F9 | `FOXTRAIL_KEY` holds the key and no file is given. | The key loads. | `tests/keyfile.test.ts` |

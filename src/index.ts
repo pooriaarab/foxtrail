@@ -1,5 +1,5 @@
 export { canonicalize } from "./canonical.js";
-export { ConflictError, EntryTooLargeError, FoxtrailError, InvalidEntryError, KeyError } from "./errors.js";
+export { ConflictError, EntryTooLargeError, FoxtrailError, InvalidEntryError, KeyError, StoreError } from "./errors.js";
 export { exportKeyHex, generateKey, importKey, type Key } from "./keys.js";
 export { GENESIS } from "./constants.js";
 export { Log, type LogOptions, type NewEntry } from "./log.js";
