@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "foxtrail demo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A tamper-evident audit log for AI agent actions.",
   "browser_specific_settings": {
     "gecko": {
