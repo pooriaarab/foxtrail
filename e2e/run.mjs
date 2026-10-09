@@ -53,7 +53,7 @@ try {
   writeFileSync(files.key, `${key}\n`);
   writeFileSync(files.cp, checkpoint);
 
-  check("redaction", false, jsonl.includes("sk-demo-secret"));
+  check("redaction", false, jsonl.includes("sk-sample-secret"));
   const good = cli(["verify", files.log, "--key", files.key, "--checkpoint", files.cp]);
   check("cli-good", 0, good.code);
   record.cliGood = good.out;

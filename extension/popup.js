@@ -29,8 +29,8 @@ async function main() {
   on("record", () =>
     guard(async () => {
       await log.append({ actor: "agent", kind: "tool.call", data: { tool: "search", query: "flights to Lisbon" } });
-      await log.append({ actor: "agent", kind: "tool.call", data: { tool: "login", user: "pooria", password: "sk-demo-secret" } });
-      await log.append({ actor: "agent", kind: "tool.call", data: { tool: "pay", token: secret("sk-demo-secret"), amount: 120 } });
+      await log.append({ actor: "agent", kind: "tool.call", data: { tool: "login", user: "pooria", password: "sk-sample-secret" } });
+      await log.append({ actor: "agent", kind: "tool.call", data: { tool: "pay", token: secret("sk-sample-secret"), amount: 120 } });
       say("recorded 3 entries");
     }));
 
