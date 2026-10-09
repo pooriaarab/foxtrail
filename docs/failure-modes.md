@@ -103,3 +103,21 @@ One entry per line, fields in a fixed order, each line ends with `\n`.
 | F7 | A key file is made twice. | The second call reads the same key. The file has mode 0600. | `tests/keyfile.test.ts` |
 | F8 | A key file holds bad text, or neither a file nor `FOXTRAIL_KEY` is given. | `KeyError`. | `tests/keyfile.test.ts` |
 | F9 | `FOXTRAIL_KEY` holds the key and no file is given. | The key loads. | `tests/keyfile.test.ts` |
+
+## The command line
+
+`foxtrail verify <file.jsonl> [--key <file>] [--checkpoint <file>]`. Exit 0 when
+the log is good, 1 when it is not, 2 when the command cannot run.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| X1 | A good log. | Exit 0. Prints the entry count and head hash. | `tests/cli.test.ts` |
+| X2 | One byte of an entry changes. | Exit 1. Prints the line number and the reason. | `tests/cli.test.ts` |
+| X3 | No `--key` and no `FOXTRAIL_KEY`. | Exit 2. Never exit 0 without a key. | `tests/cli.test.ts` |
+| X4 | The wrong key. | Exit 1 at line 1 with `bad-mac`. | `tests/cli.test.ts` |
+| X5 | The log file does not exist. | Exit 2. | `tests/cli.test.ts` |
+| X6 | No file, an unknown flag, or a flag with no value. | Exit 2 and a usage text. | `tests/cli.test.ts` |
+| X7 | The tail is cut, with a checkpoint. | Exit 1 at the first missing line. | `tests/cli.test.ts` |
+| X8 | The checkpoint file is not JSON, or is edited. | Exit 2 for bad JSON. Exit 1 for an edit. | `tests/cli.test.ts` |
+| X9 | A line is not JSON. | Exit 1 with that line number. | `tests/cli.test.ts` |
+| X10 | An empty log file. | Exit 0 with 0 entries. | `tests/cli.test.ts` |
