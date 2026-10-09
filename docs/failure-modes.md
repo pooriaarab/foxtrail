@@ -60,3 +60,32 @@ A checkpoint holds `count`, `head`, `ts` and a `mac`. It is the only way to see 
 | P2 | A checkpoint from one log is used on another log. | `checkpoint-mismatch`. | `tests/checkpoint.test.ts` |
 | P3 | A checkpoint is edited, or signed by another key. | `bad-checkpoint`. | `tests/checkpoint.test.ts` |
 | P4 | The log grows after a checkpoint. | The checkpoint still verifies. | `tests/checkpoint.test.ts` |
+
+## Redaction
+
+A secret becomes `{"$redacted":"<salt>:<sha256>"}` before the entry is hashed.
+The salt is 16 random bytes. The hash covers the salt and the canonical JSON of
+the value.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| R1 | A `secret()` value sits in an object or an array, at any depth. | The stored entry holds the marker. The raw text is nowhere in the log. | `tests/redact.test.ts` |
+| R2 | A key listed in the `redact` option holds a value at any depth. | Same as R1. | `tests/redact.test.ts` |
+| R3 | The same secret is logged twice. | The two markers differ, so equal secrets do not match. | `tests/redact.test.ts` |
+| R4 | `checkRedacted()` gets the right value, a wrong value, or a bad marker. | `true`, `false`, `false`. | `tests/redact.test.ts` |
+| R5 | A secret holds a value that is not JSON, or the data points to itself. | `InvalidEntryError`. The log is unchanged. | `tests/redact.test.ts` |
+| R6 | A redacted log is verified. | It verifies. | `tests/redact.test.ts` |
+
+## JSONL export and import
+
+One entry per line, fields in a fixed order, each line ends with `\n`.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| J1 | A log is exported and parsed again. | The entries are equal and verify. | `tests/jsonl.test.ts` |
+| J2 | A line is not valid JSON. | The parse result names the 1-based line. | `tests/jsonl.test.ts` |
+| J3 | The text has a blank line in the middle. | The parse result names that line. One final `\n` is fine. Empty text is an empty log. | `tests/jsonl.test.ts` |
+| J4 | A line is valid JSON but not an entry (`[1]`, `5`). | `verify()` reports `malformed` at that index. | `tests/jsonl.test.ts` |
+| J5 | The file starts with a byte order mark, or uses `\r\n`. | Both parse and verify. | `tests/jsonl.test.ts` |
+| J6 | `importJsonl()` gets a log that does not verify. | It throws. The store stays empty. | `tests/jsonl.test.ts` |
+| J7 | `importJsonl()` runs on a store that has entries. | `ConflictError`. | `tests/jsonl.test.ts` |

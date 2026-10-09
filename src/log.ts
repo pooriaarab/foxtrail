@@ -2,7 +2,9 @@ import { canonicalize } from "./canonical.js";
 import { CHECKPOINT_DOMAIN, ENTRY_DOMAIN, GENESIS } from "./constants.js";
 import { hmacHex, sha256Hex } from "./crypto.js";
 import { ConflictError, EntryTooLargeError, InvalidEntryError } from "./errors.js";
+import { exportJsonl, parseJsonl } from "./jsonl.js";
 import { resolveKey, type Key } from "./keys.js";
+import { redact } from "./redact.js";
 import type { Checkpoint, Entry, Store, VerifyResult } from "./types.js";
 import { verify } from "./verify.js";
 
@@ -16,6 +18,8 @@ export interface LogOptions {
   now?: () => number;
   /** The largest entry in bytes of canonical JSON. Default: 1 MiB. */
   maxEntryBytes?: number;
+  /** Keys whose values the log replaces by a salted hash, at any depth. */
+  redact?: string[];
 }
 
 export interface NewEntry {
@@ -29,12 +33,14 @@ export class Log {
   readonly #key: Promise<CryptoKey>;
   readonly #now: () => number;
   readonly #max: number;
+  readonly #redact: readonly string[];
   #queue: Promise<unknown> = Promise.resolve();
 
   constructor(options: LogOptions) {
     this.#store = options.store;
     this.#now = options.now ?? Date.now;
     this.#max = options.maxEntryBytes ?? 1_048_576;
+    this.#redact = options.redact ?? [];
     this.#key = resolveKey(options.key);
     this.#key.catch(() => {});
   }
@@ -49,7 +55,7 @@ export class Log {
   async #append(input: NewEntry): Promise<Entry> {
     if (typeof input.actor !== "string" || input.actor === "") throw new InvalidEntryError("The actor must be a non-empty string.");
     if (typeof input.kind !== "string" || input.kind === "") throw new InvalidEntryError("The kind must be a non-empty string.");
-    const data = structuredClone(input.data ?? null);
+    const data = structuredClone(await redact(input.data ?? null, this.#redact));
     const key = await this.#key;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       const last = await this.#store.last();
@@ -74,6 +80,25 @@ export class Log {
       }
     }
     throw new ConflictError(`The log kept changing. Gave up after ${MAX_RETRIES} tries.`);
+  }
+
+  /** All entries as JSONL text. */
+  async exportJsonl(): Promise<string> {
+    return exportJsonl(await this.#store.all());
+  }
+
+  /**
+   * Load JSONL text into an empty store. The text must verify with this log's
+   * key first. Returns the number of entries.
+   */
+  async importJsonl(text: string): Promise<number> {
+    const parsed = parseJsonl(text);
+    if (!parsed.ok) throw new InvalidEntryError(parsed.message);
+    if ((await this.#store.count()) > 0) throw new ConflictError("The store already has entries.");
+    const result = await verify(parsed.entries, { key: await this.#key });
+    if (!result.ok) throw new InvalidEntryError(`The log does not verify at line ${result.index === null ? "?" : result.index + 1}: ${result.message}`);
+    for (const entry of parsed.entries) await this.#store.append(entry);
+    return parsed.entries.length;
   }
 
   entries(): Promise<Entry[]> {
