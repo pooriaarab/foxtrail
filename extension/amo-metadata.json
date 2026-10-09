@@ -1,0 +1,18 @@
+{
+  "default_locale": "en-US",
+  "slug": "foxtrail",
+  "name": { "en-US": "foxtrail — tamper-evident log for AI agents" },
+  "summary": {
+    "en-US": "Keep a tamper-evident log of AI agent actions in your browser. Each entry links to the one before it and has a keyed signature, so an edit, a deletion or a change of order shows when you verify the log."
+  },
+  "description": {
+    "en-US": "foxtrail is an audit log for AI agent actions. This add-on shows the foxtrail library at work in a popup.\n\n**Who it is for:** developers who build AI agents and want a record of what an agent did that nobody can change without detection.\n\n**What it does**\n\n- Records sample agent events in a log in your browser (IndexedDB).\n- Links each entry to the one before it with a keyed signature (HMAC from Web Crypto).\n- Removes secret fields such as passwords before it writes an entry.\n- Verifies the log and names the first bad entry.\n- Shows that two writers on one log keep the chain correct, and that a stale write is refused.\n- Exports the log as a JSONL file and makes a checkpoint. The `foxtrail verify` command from the npm package checks the export.\n\n**What leaves your computer:** nothing. The add-on makes no network requests. The log and its key stay in this browser until you export them yourself.\n\n**Permissions**\n\n- Unlimited storage: a long log does not hit the storage limit.\n\nThe add-on has no access to web pages. The source code is MIT licensed."
+  },
+  "categories": { "firefox": ["web-development"] },
+  "homepage": { "en-US": "https://github.com/pooriaarab/foxtrail" },
+  "support_url": { "en-US": "https://github.com/pooriaarab/foxtrail/issues" },
+  "version": {
+    "license": "MIT",
+    "approval_notes": "The uploaded source.zip is the git tree of this release. To build: install Node 24 and pnpm 11 (corepack enable), run `pnpm install --frozen-lockfile`, then `pnpm build:ext`. The output is dist-ext/. esbuild bundles extension/popup.js with src/; popup.html, the manifest and the icons are copied unmodified. To try it: click the toolbar button, then Record sample events, Verify, and Export JSONL. No account is needed."
+  }
+}
