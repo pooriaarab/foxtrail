@@ -44,4 +44,9 @@ describe("checkpoints", () => {
     const empty = new Log({ store: new MemoryStore(), key });
     expect(await empty.checkpoint()).toMatchObject({ count: 0, head: GENESIS });
   });
+
+  it.each([null, false, 0, "", [], 5])("P5: rejects the falsy or odd checkpoint %j", async (value) => {
+    const { key, entries } = await build();
+    expect(await verify(entries.slice(0, 2), { key, checkpoint: value as never })).toMatchObject({ ok: false, reason: "bad-checkpoint" });
+  });
 });
