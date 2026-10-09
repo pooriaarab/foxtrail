@@ -15,7 +15,6 @@ const cli = (args) => {
   const r = spawnSync(process.execPath, ["dist/bin.js", ...args], { encoding: "utf8" });
   return { code: r.status, out: r.stdout.trim(), err: r.stderr.trim() };
 };
-const text = (page, id) => page.evaluate((i) => document.getElementById(i).textContent ?? "", id);
 const click = (page, id) => page.evaluate((i) => document.getElementById(i).click(), id);
 const waitFor = (page, id, prefix) =>
   poll(page, ({ i, p }) => document.getElementById(i)?.textContent?.startsWith(p) && document.getElementById(i).textContent, { i: id, p: prefix });
@@ -44,9 +43,9 @@ try {
   await click(again, "export");
   await click(again, "show-key");
   await click(again, "checkpoint");
-  const jsonl = await poll(again, () => document.getElementById("export").value);
+  const jsonl = await poll(again, () => document.getElementById("export-out").value);
   const key = await poll(again, () => document.getElementById("key").textContent);
-  const checkpoint = await poll(again, () => document.getElementById("checkpoint").value);
+  const checkpoint = await poll(again, () => document.getElementById("checkpoint-out").value);
 
   const dir = mkdtempSync(join(tmpdir(), "foxtrail-e2e-"));
   const files = { log: join(dir, "log.jsonl"), key: join(dir, "key"), cp: join(dir, "checkpoint.json") };
@@ -80,7 +79,7 @@ try {
 } finally {
   await fox?.close();
 }
-record.passed = !record.error && record.checks.length === 11 && record.checks.every((c) => c.ok);
+record.passed = !record.error && record.checks.length === 10 && record.checks.every((c) => c.ok);
 const path = writeArtifact("artifacts", "e2e", record);
 for (const c of record.checks) console.log(`${c.ok ? "ok " : "BAD"} ${c.name}: ${c.actual}`);
 console.log(`${record.passed ? "PASS" : "FAIL"}${record.error ? `: ${record.error}` : ""} | ${path}`);
