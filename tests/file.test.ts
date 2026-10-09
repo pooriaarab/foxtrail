@@ -1,4 +1,4 @@
-import { appendFileSync, mkdtempSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -68,6 +68,33 @@ describe("FileStore", () => {
     const path = join(dir(), "log.jsonl");
     writeFileSync(`${path}.lock`, "");
     const log = new Log({ store: new FileStore(path, { lockTimeoutMs: 200 }), key: await generateKey() });
+    await expect(log.append({ actor: "a", kind: "k", data: 1 })).rejects.toThrow(StoreError);
+  });
+
+  it("F10: leaves a lock that another writer now holds", async () => {
+    const path = join(dir(), "log.jsonl");
+    const store = new FileStore(path, { beforeRelease: async () => writeFileSync(`${path}.lock`, "someone-else") });
+    const log = new Log({ store, key: await generateKey() });
+    await log.append({ actor: "a", kind: "k", data: 1 });
+    expect(readFileSync(`${path}.lock`, "utf8")).toBe("someone-else");
+  });
+
+  it("F11: one writer takes a stale lock", async () => {
+    const path = join(dir(), "log.jsonl");
+    writeFileSync(`${path}.lock`, "dead-process");
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(`${path}.lock`, old, old);
+    const key = await generateKey();
+    const logs = Array.from({ length: 4 }, () => new Log({ store: new FileStore(path), key }));
+    await Promise.all(Array.from({ length: 24 }, (_v, i) => (logs[i % 4] as Log).append({ actor: "a", kind: "k", data: i })));
+    expect(await (logs[0] as Log).verify()).toMatchObject({ ok: true, count: 24 });
+    expect(existsSync(`${path}.lock`)).toBe(false);
+  });
+
+  it("F12: refuses to report success after another entry landed", async () => {
+    const path = join(dir(), "log.jsonl");
+    const store = new FileStore(path, { beforeRelease: async () => appendFileSync(path, '{"rival":1}\n') });
+    const log = new Log({ store, key: await generateKey() });
     await expect(log.append({ actor: "a", kind: "k", data: 1 })).rejects.toThrow(StoreError);
   });
 });
