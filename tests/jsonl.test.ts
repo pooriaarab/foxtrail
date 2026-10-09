@@ -65,4 +65,18 @@ describe("JSONL", () => {
     const { entries, log } = await build(1);
     await expect(log.importJsonl(exportJsonl(entries))).rejects.toThrow(ConflictError);
   });
+
+  it("J8: rejects a repeated key at any depth", async () => {
+    const { entries } = await build(2);
+    const line = exportJsonl(entries).split("\n")[1] as string;
+    const forged = line.replace('"actor":"agent"', '"actor":"agent","actor":"intruder"');
+    expect(forged).not.toBe(line);
+    expect(parseJsonl(`${line}\n${forged}\n`)).toMatchObject({ ok: false, line: 2 });
+    expect(parseJsonl('{"data":{"a":1,"b":{"c":1,"c":2}}}\n')).toMatchObject({ ok: false, line: 1 });
+  });
+
+  it("J9: finds an escaped repeat and ignores key names inside strings", () => {
+    expect(parseJsonl('{"a":1,"\\u0061":2}\n')).toMatchObject({ ok: false, line: 1 });
+    expect(parseJsonl('{"a":"\\"a\\":1","b":[{"a":1},{"a":2}]}\n')).toMatchObject({ ok: true });
+  });
 });

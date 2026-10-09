@@ -146,3 +146,10 @@ CLI on the export.
 |---|---|---|---|
 | P5 | `verify()` gets a checkpoint that is `null`, `false`, `0`, `""`, an array or a number. | `bad-checkpoint`. Only `undefined` means no checkpoint. | `tests/checkpoint.test.ts` |
 | P6 | A checkpoint file holds `null`, `false`, `0`, `""` or `[]`. | The CLI exits 2 and names the file. It never skips the check. | `tests/cli.test.ts` |
+
+## Review fixes: repeated keys in a line
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| J8 | A line has the same key twice, at any depth, so parsers disagree on the value. | `parseJsonl()` names the line. The CLI exits 1. | `tests/jsonl.test.ts` |
+| J9 | A repeated key hides behind an escape (`"a"` and `"a"`), or sits in a string value. | The escaped repeat is found. A key name inside a string value is not a repeat. | `tests/jsonl.test.ts` |
