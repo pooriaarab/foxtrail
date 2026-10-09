@@ -121,3 +121,21 @@ the log is good, 1 when it is not, 2 when the command cannot run.
 | X8 | The checkpoint file is not JSON, or is edited. | Exit 2 for bad JSON. Exit 1 for an edit. | `tests/cli.test.ts` |
 | X9 | A line is not JSON. | Exit 1 with that line number. | `tests/cli.test.ts` |
 | X10 | An empty log file. | Exit 0 with 0 entries. | `tests/cli.test.ts` |
+
+## IndexedDB store and the demo extension
+
+The browser rows are checked by the Firefox E2E test (`pnpm e2e`). The E2E test
+loads the demo extension, uses its popup, exports the log, and runs the real
+CLI on the export.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| I1 | Two `Log` objects append to one `IdbStore` at the same time, like two tabs. | One chain. It verifies. | `e2e/run.mjs` check `race` |
+| I2 | The popup closes and opens again. | The entries and the key are still there. The log verifies. | `e2e/run.mjs` check `reload` |
+| I3 | Code tries to export a non-extractable key. | `KeyError`. | `e2e/run.mjs` check `non-extractable` |
+| I4 | The store gets an entry with the wrong `seq`. | `ConflictError`. The count does not change. | `e2e/run.mjs` check `conflict` |
+| I5 | The page has no IndexedDB. | `StoreError` from `IdbStore.open()`. | `tests/idb.test.ts` |
+| E1 | The log that the popup exports goes to the CLI. | Exit 0. | `e2e/run.mjs` check `cli-good` |
+| E2 | One byte of the export changes. | Exit 1. The message names the line. | `e2e/run.mjs` check `cli-tamper` |
+| E3 | The export loses its last lines. | Exit 0 without a checkpoint. Exit 1 with one. | `e2e/run.mjs` check `cli-truncate` |
+| E4 | The popup records a value marked secret. | The raw text is not in the export. | `e2e/run.mjs` check `redaction` |
