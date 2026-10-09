@@ -1,9 +1,9 @@
 import { canonicalize } from "./canonical.js";
-import { ENTRY_DOMAIN, GENESIS } from "./constants.js";
+import { CHECKPOINT_DOMAIN, ENTRY_DOMAIN, GENESIS } from "./constants.js";
 import { hmacHex, sha256Hex } from "./crypto.js";
 import { ConflictError, EntryTooLargeError, InvalidEntryError } from "./errors.js";
 import { resolveKey, type Key } from "./keys.js";
-import type { Entry, Store, VerifyResult } from "./types.js";
+import type { Checkpoint, Entry, Store, VerifyResult } from "./types.js";
 import { verify } from "./verify.js";
 
 const MAX_RETRIES = 100;
@@ -80,7 +80,14 @@ export class Log {
     return this.#store.all();
   }
 
-  async verify(): Promise<VerifyResult> {
-    return verify(await this.#store.all(), { key: await this.#key });
+  /** Sign the head of the log. Store the result somewhere else to detect a cut tail. */
+  async checkpoint(): Promise<Checkpoint> {
+    const last = await this.#store.last();
+    const body = { count: last ? last.seq + 1 : 0, head: last?.hash ?? GENESIS, ts: Math.trunc(this.#now()) };
+    return { ...body, mac: await hmacHex(await this.#key, CHECKPOINT_DOMAIN + canonicalize(body)) };
+  }
+
+  async verify(options: { checkpoint?: Checkpoint } = {}): Promise<VerifyResult> {
+    return verify(await this.#store.all(), { key: await this.#key, ...options });
   }
 }

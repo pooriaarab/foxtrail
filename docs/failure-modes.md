@@ -49,3 +49,14 @@ HMAC-SHA-256 of the hash. `verify()` reports the first bad entry by its
 | L19 | The caller gives an empty actor or a `data` value that is not JSON. | `InvalidEntryError`. The log is unchanged. | `tests/chain.test.ts` |
 | L20 | The store gets an entry with the wrong `seq` or `prev`. | `ConflictError`. | `tests/chain.test.ts` |
 | L22 | An entry has the right `seq` but its `prev` is not the hash before it. | `bad-prev`. | `tests/chain.test.ts` |
+
+## Checkpoints
+
+A checkpoint holds `count`, `head`, `ts` and a `mac`. It is the only way to see a cut tail.
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| P1 | Someone cuts entries off the end. | Without a checkpoint nothing is wrong. With one, `truncated` at the first missing index. | `tests/checkpoint.test.ts` |
+| P2 | A checkpoint from one log is used on another log. | `checkpoint-mismatch`. | `tests/checkpoint.test.ts` |
+| P3 | A checkpoint is edited, or signed by another key. | `bad-checkpoint`. | `tests/checkpoint.test.ts` |
+| P4 | The log grows after a checkpoint. | The checkpoint still verifies. | `tests/checkpoint.test.ts` |

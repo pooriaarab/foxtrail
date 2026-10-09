@@ -16,6 +16,15 @@ export interface Entry {
   mac: string;
 }
 
+/** A signed summary of the log head. Keep it somewhere else to detect truncation. */
+export interface Checkpoint {
+  count: number;
+  /** The hash of the last entry, or GENESIS when count is 0. */
+  head: string;
+  ts: number;
+  mac: string;
+}
+
 /** Where a Log keeps its entries. */
 export interface Store {
   count(): Promise<number>;
@@ -42,5 +51,5 @@ export type VerifyReason =
 
 export type VerifyResult =
   | { ok: true; count: number; head: string }
-  /** `index` is the 0-based position of the first bad entry. */
-  | { ok: false; index: number; reason: VerifyReason; message: string };
+  /** `index` is the 0-based position of the first bad entry. It is null when the fault is the checkpoint itself. */
+  | { ok: false; index: number | null; reason: VerifyReason; message: string };
