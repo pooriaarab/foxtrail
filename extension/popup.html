@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>foxtrail demo</title>
+    <title>foxtrail</title>
     <style>
       body { font: 14px/1.4 system-ui, sans-serif; margin: 12px; width: 420px; }
       button { margin: 0 4px 4px 0; }
@@ -15,22 +15,22 @@
     <h1>foxtrail</h1>
     <p>A tamper-evident audit log for AI agent actions.</p>
     <p>
-      <button id="record">Record demo events</button>
+      <button id="record">Record sample events</button>
       <button id="race">Race two writers</button>
       <button id="verify">Verify</button>
     </p>
     <p>
       <button id="export">Export JSONL</button>
       <button id="checkpoint">Checkpoint</button>
-      <button id="show-key">Show demo key</button>
-      <button id="non-extractable">Test non-extractable key</button>
-      <button id="conflict">Test a stale write</button>
+      <button id="show-key">Show the key</button>
+      <button id="non-extractable">Try a non-extractable key</button>
+      <button id="conflict">Try a stale write</button>
     </p>
     <p>Log: <output id="count">loading</output></p>
     <p>Status: <output id="status"></output></p>
     <label>Export <textarea id="export-out" readonly></textarea></label>
     <label>Checkpoint <textarea id="checkpoint-out" readonly></textarea></label>
-    <p>Demo key (the demo key is extractable so the CLI can verify): <output id="key"></output></p>
+    <p>Key (extractable, so the CLI can verify the export): <output id="key"></output></p>
     <p><a id="download" download="foxtrail.jsonl" hidden>Download the JSONL file</a></p>
     <script src="popup.js"></script>
   </body>

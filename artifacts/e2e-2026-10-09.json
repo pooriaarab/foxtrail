@@ -1,5 +1,5 @@
 {
-  "startedAt": "2026-10-09T03:40:05.600Z",
+  "startedAt": "2026-10-09T17:49:24.253Z",
   "checks": [
     {
       "name": "record",
@@ -63,7 +63,7 @@
     }
   ],
   "firefox": "firefox/157.0.1",
-  "cliGood": "ok: 23 entries, head ee62d852b39912b52713834127aad916dcb122c060430df8f4ebe80b16314e26",
+  "cliGood": "ok: 23 entries, head f8a982bf559e7fe3c5ee1656b961c067c4bac391a91a5c744deae135005e4174",
   "cliTamper": "line 2: bad-hash: Entry 1 was edited: its hash does not match its content.",
   "cliTruncate": "line 11: truncated: The log has 10 entries. The checkpoint says 23.",
   "passed": true
