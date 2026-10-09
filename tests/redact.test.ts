@@ -3,8 +3,10 @@ import { InvalidEntryError } from "../src/errors.js";
 import { generateKey } from "../src/keys.js";
 import { Log } from "../src/log.js";
 import { MemoryStore } from "../src/memory.js";
+import type { Entry } from "../src/types.js";
 import { checkRedacted, secret } from "../src/redact.js";
 
+const at = (e: Entry | undefined) => e as Entry;
 const TOKEN = "sk-live-123456";
 
 async function logWith(redact?: string[]) {
@@ -27,7 +29,7 @@ describe("redaction", () => {
     await log.append({ actor: "a", kind: "k", data: { password: TOKEN, nested: [{ apiKey: { x: TOKEN } }], safe: "ok" } });
     const [entry] = await store.all();
     expect(JSON.stringify(entry)).not.toContain(TOKEN);
-    expect((entry?.data as { safe: string }).safe).toBe("ok");
+    expect((at(entry).data as { safe: string }).safe).toBe("ok");
   });
 
   it("R3: gives equal secrets different markers", async () => {

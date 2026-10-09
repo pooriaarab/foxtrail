@@ -62,7 +62,7 @@ describe("JSONL", () => {
   });
 
   it("J7: refuses to import into a store that has entries", async () => {
-    const { key, entries, log } = await build(1);
+    const { entries, log } = await build(1);
     await expect(log.importJsonl(exportJsonl(entries))).rejects.toThrow(ConflictError);
   });
 });
