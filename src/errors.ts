@@ -35,3 +35,10 @@ export class ConflictError extends FoxtrailError {
     super("conflict", message);
   }
 }
+
+/** A store cannot read or write its data: a partial line, bad JSON, or a stuck lock. */
+export class StoreError extends FoxtrailError {
+  constructor(message: string) {
+    super("store", message);
+  }
+}
