@@ -1,6 +1,6 @@
 {
   "name": "foxtrail",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A tamper-evident audit log for AI agent actions.",
   "type": "module",
   "license": "MIT",
