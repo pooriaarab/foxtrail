@@ -53,7 +53,7 @@ npx foxtrail verify agent.jsonl --key agent.key
 | Who | What they build | How foxtrail helps |
 |---|---|---|
 | A developer of a browser agent | An agent that books travel in the user's browser | Each click and form fill goes in the log. The user can check later what the agent did. |
-| A compliance team | Evidence that an AI tool acted within policy | The exported JSONL file and the key let an auditor check every entry without trusting the host. |
+| A compliance team | Evidence that an AI tool acted within policy | The exported JSONL file and the key let an auditor check every entry. The auditor must hold the key, and anyone with the key can also forge entries. |
 | A CI maintainer | A bot that opens pull requests and runs commands | The bot writes to a JSONL file. The CI job runs `foxtrail verify` and fails on any edit. |
 | A user of MCP servers | A record of every tool call that an MCP client makes | The client logs each call with `kind: "mcp.call"`. Secrets in the arguments become hashes. |
 | A support engineer | A way to replay what an agent did before a bug | The log has the order and the time of each step. A checkpoint shows if the end of the log is missing. |
@@ -181,7 +181,8 @@ The library itself uses only Web Crypto and IndexedDB, so it also runs in other 
 - A redacted value is a salted SHA-256. A short or guessable secret can be guessed from the hash. `actor` and `kind` are never redacted.
 - foxtrail does not normalize Unicode. A text change from NFC to NFD counts as an edit.
 - `verify` reads the whole log into memory. There is no rotation or compaction.
-- The file lock is a lock file. A crashed process leaves it for 10 seconds before the next writer removes it.
+- The file lock is a lock file with an owner token. A crashed process leaves it for 10 seconds before the next writer moves it away. A writer that loses its lock fails with `StoreError`.
+- A JSONL line with a repeated key is refused, and a checkpoint file must hold an object.
 - Whitespace and key order in a JSONL line are not signed. Only the values are.
 - Only Firefox runs the E2E test. The package is not on npm yet.
 
