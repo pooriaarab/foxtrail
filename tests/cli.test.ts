@@ -114,4 +114,13 @@ describe("foxtrail verify", () => {
     expect(r.code).toBe(0);
     expect(r.out).toContain("0 entries");
   });
+
+  it.each(["null", "false", "0", '""', "[]"])("P6: exits 2 for a checkpoint file that holds %s", async (text) => {
+    const f = await fixture();
+    writeFileSync(f.file, readFileSync(f.file, "utf8").split("\n").slice(0, 2).join("\n") + "\n");
+    writeFileSync(f.checkpointFile, text);
+    const r = await cli(["verify", f.file, "--key", f.keyFile, "--checkpoint", f.checkpointFile]);
+    expect(r.code).toBe(2);
+    expect(r.err).toContain("checkpoint.json");
+  });
 });

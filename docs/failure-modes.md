@@ -139,3 +139,10 @@ CLI on the export.
 | E2 | One byte of the export changes. | Exit 1. The message names the line. | `e2e/run.mjs` check `cli-tamper` |
 | E3 | The export loses its last lines. | Exit 0 without a checkpoint. Exit 1 with one. | `e2e/run.mjs` check `cli-truncate` |
 | E4 | The popup records a value marked secret. | The raw text is not in the export. | `e2e/run.mjs` check `redaction` |
+
+## Review fixes: empty checkpoints
+
+| # | Failure mode | Wanted behaviour | Test |
+|---|---|---|---|
+| P5 | `verify()` gets a checkpoint that is `null`, `false`, `0`, `""`, an array or a number. | `bad-checkpoint`. Only `undefined` means no checkpoint. | `tests/checkpoint.test.ts` |
+| P6 | A checkpoint file holds `null`, `false`, `0`, `""` or `[]`. | The CLI exits 2 and names the file. It never skips the check. | `tests/cli.test.ts` |

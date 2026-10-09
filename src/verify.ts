@@ -34,9 +34,10 @@ const fail = (index: number | null, reason: VerifyReason, message: string): Veri
 export async function verify(entries: Entry[], options: { key: Key; checkpoint?: Checkpoint }): Promise<VerifyResult> {
   const key = await resolveKey(options.key);
   const { checkpoint } = options;
-  if (checkpoint) {
-    const { mac, ...body } = checkpoint;
-    const shaped = isCount(body.count) && isCount(body.ts) && HEX64.test(String(body.head)) && typeof mac === "string";
+  if (checkpoint !== undefined) {
+    const plain = typeof checkpoint === "object" && checkpoint !== null && !Array.isArray(checkpoint);
+    const { mac, ...body } = plain ? checkpoint : ({} as Checkpoint);
+    const shaped = plain && isCount(body.count) && isCount(body.ts) && HEX64.test(String(body.head)) && typeof mac === "string";
     if (!shaped || !(await hmacVerify(key, mac, CHECKPOINT_DOMAIN + canonicalize({ count: body.count, head: body.head, ts: body.ts })))) {
       return fail(null, "bad-checkpoint", "The checkpoint is not signed by this key.");
     }
@@ -61,7 +62,7 @@ export async function verify(entries: Entry[], options: { key: Key; checkpoint?:
     prev = hash;
     prevTs = entry.ts;
   }
-  if (checkpoint) {
+  if (checkpoint !== undefined) {
     if (entries.length < checkpoint.count) {
       return fail(entries.length, "truncated", `The log has ${entries.length} entries. The checkpoint says ${checkpoint.count}.`);
     }
