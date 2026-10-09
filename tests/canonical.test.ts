@@ -33,7 +33,7 @@ describe("canonicalize", () => {
     ["symbol", Symbol("x")],
     ["Date", new Date(0)],
     ["Map", new Map()],
-    ["array hole", [1, , 3]],
+    ["undefined array item", [1, undefined, 3]],
   ])("C4: rejects %s", (_name, value) => {
     expect(() => canonicalize(value)).toThrow(InvalidEntryError);
   });

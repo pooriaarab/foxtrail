@@ -1,2 +1,3 @@
-// The public API of foxtrail. Replace this export with the real one.
-export const name = "foxtrail";
+export { canonicalize } from "./canonical.js";
+export { FoxtrailError, InvalidEntryError, KeyError } from "./errors.js";
+export { exportKeyHex, generateKey, importKey, type Key } from "./keys.js";
