@@ -2,8 +2,8 @@ import { canonicalize } from "./canonical.js";
 import { hmacVerify, sha256Hex } from "./crypto.js";
 import { InvalidEntryError } from "./errors.js";
 import { resolveKey, type Key } from "./keys.js";
-import { ENTRY_DOMAIN, GENESIS } from "./constants.js";
-import type { Entry, VerifyReason, VerifyResult } from "./types.js";
+import { CHECKPOINT_DOMAIN, ENTRY_DOMAIN, GENESIS } from "./constants.js";
+import type { Checkpoint, Entry, VerifyReason, VerifyResult } from "./types.js";
 
 const FIELDS = ["actor", "data", "hash", "kind", "mac", "prev", "seq", "ts"];
 const HEX64 = /^[0-9a-f]{64}$/;
@@ -24,15 +24,23 @@ function isEntry(value: unknown): value is Entry {
   );
 }
 
-const fail = (index: number, reason: VerifyReason, message: string): VerifyResult => ({ ok: false, index, reason, message });
+const fail = (index: number | null, reason: VerifyReason, message: string): VerifyResult => ({ ok: false, index, reason, message });
 
 /**
  * Walk the chain from the first entry. Returns the first bad entry, or ok.
- * The key is required: a hash chain
+ * A checkpoint also detects a cut tail. The key is required: a hash chain
  * alone can be rebuilt by anyone with write access.
  */
-export async function verify(entries: Entry[], options: { key: Key }): Promise<VerifyResult> {
+export async function verify(entries: Entry[], options: { key: Key; checkpoint?: Checkpoint }): Promise<VerifyResult> {
   const key = await resolveKey(options.key);
+  const { checkpoint } = options;
+  if (checkpoint) {
+    const { mac, ...body } = checkpoint;
+    const shaped = isCount(body.count) && isCount(body.ts) && HEX64.test(String(body.head)) && typeof mac === "string";
+    if (!shaped || !(await hmacVerify(key, mac, CHECKPOINT_DOMAIN + canonicalize({ count: body.count, head: body.head, ts: body.ts })))) {
+      return fail(null, "bad-checkpoint", "The checkpoint is not signed by this key.");
+    }
+  }
   let prev = GENESIS;
   let prevTs = 0;
   for (const [i, entry] of entries.entries()) {
@@ -52,6 +60,13 @@ export async function verify(entries: Entry[], options: { key: Key }): Promise<V
     if (entry.ts < prevTs) return fail(i, "bad-time", `Entry ${i} is older than the entry before it.`);
     prev = hash;
     prevTs = entry.ts;
+  }
+  if (checkpoint) {
+    if (entries.length < checkpoint.count) {
+      return fail(entries.length, "truncated", `The log has ${entries.length} entries. The checkpoint says ${checkpoint.count}.`);
+    }
+    const head = checkpoint.count === 0 ? GENESIS : (entries[checkpoint.count - 1] as Entry).hash;
+    if (head !== checkpoint.head) return fail(Math.max(checkpoint.count - 1, 0), "checkpoint-mismatch", "The log does not match the checkpoint.");
   }
   return { ok: true, count: entries.length, head: prev };
 }
