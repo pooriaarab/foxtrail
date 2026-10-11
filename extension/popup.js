@@ -4,7 +4,10 @@ import { ConflictError, IdbStore, KeyError, Log, exportKeyHex, idbKey, secret } 
 
 const $ = (id) => document.getElementById(id);
 const on = (id, handler) => $(id).addEventListener("click", handler);
-const say = (text) => ($("status").textContent = text);
+const say = (text, state = "") => {
+  $("status").textContent = text;
+  $("status").dataset.state = state;
+};
 
 async function main() {
   // The demo key is extractable, so the CLI can verify the export. Without
@@ -21,7 +24,7 @@ async function main() {
     try {
       await action();
     } catch (error) {
-      say(`${error.name}: ${error.message}`);
+      say(`${error.name}: ${error.message}`, "bad");
     }
     await refresh();
   }
@@ -44,7 +47,7 @@ async function main() {
 
   async function verifyNow() {
     const result = await log.verify();
-    say(result.ok ? `ok: ${result.count} entries, head ${result.head}` : `line ${result.index + 1}: ${result.reason}`);
+    say(result.ok ? `ok: ${result.count} entries, head ${result.head}` : `line ${result.index + 1}: ${result.reason}`, result.ok ? "ok" : "bad");
   }
 
   on("verify", () => guard(verifyNow));

@@ -3,35 +3,42 @@
   <head>
     <meta charset="utf-8" />
     <title>foxtrail</title>
-    <style>
-      body { font: 14px/1.4 system-ui, sans-serif; margin: 12px; width: 420px; }
-      button { margin: 0 4px 4px 0; }
-      textarea { width: 100%; height: 6em; font: 11px monospace; }
-      output { display: block; word-break: break-all; }
-      #status { font-weight: 600; }
-    </style>
+    <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <h1>foxtrail</h1>
-    <p>A tamper-evident audit log for AI agent actions.</p>
-    <p>
-      <button id="record">Record sample events</button>
-      <button id="race">Race two writers</button>
-      <button id="verify">Verify</button>
-    </p>
-    <p>
-      <button id="export">Export JSONL</button>
-      <button id="checkpoint">Checkpoint</button>
-      <button id="show-key">Show the key</button>
-      <button id="non-extractable">Try a non-extractable key</button>
-      <button id="conflict">Try a stale write</button>
-    </p>
-    <p>Log: <output id="count">loading</output></p>
-    <p>Status: <output id="status"></output></p>
-    <label>Export <textarea id="export-out" readonly></textarea></label>
-    <label>Checkpoint <textarea id="checkpoint-out" readonly></textarea></label>
-    <p>Key (extractable, so the CLI can verify the export): <output id="key"></output></p>
-    <p><a id="download" download="foxtrail.jsonl" hidden>Download the JSONL file</a></p>
+    <header>
+      <img class="mark" src="icons/icon-48.png" alt="" width="22" height="22" />
+      <h1>foxtrail</h1>
+      <span class="chip">Demo</span>
+    </header>
+    <p class="muted">A tamper-evident audit log for AI agent actions.</p>
+
+    <section class="card">
+      <h2>Log</h2>
+      <p class="status">Entries <output id="count">loading</output></p>
+      <p class="status">Result <output id="status"></output></p>
+      <div class="actions">
+        <button id="record" class="primary">Record events</button>
+        <button id="race">Race writers</button>
+        <button id="verify">Verify</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Export and test</h2>
+      <div class="actions">
+        <button id="export" class="small">Export JSONL</button>
+        <button id="checkpoint" class="small">Checkpoint</button>
+        <button id="show-key" class="small">Show the key</button>
+        <button id="non-extractable" class="small">Try a non-extractable key</button>
+        <button id="conflict" class="small">Try a stale write</button>
+      </div>
+      <label>Export <textarea id="export-out" readonly placeholder="Nothing exported yet."></textarea></label>
+      <label>Checkpoint <textarea id="checkpoint-out" readonly placeholder="No checkpoint yet."></textarea></label>
+      <p class="status">Key <output id="key"></output></p>
+      <p class="hint">The key is extractable, so the CLI can verify the export.</p>
+      <a id="download" download="foxtrail.jsonl" hidden>Download the JSONL file</a>
+    </section>
     <script src="popup.js"></script>
   </body>
 </html>
