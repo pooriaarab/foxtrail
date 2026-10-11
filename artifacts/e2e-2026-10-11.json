@@ -1,0 +1,70 @@
+{
+  "startedAt": "2026-10-11T04:22:45.585Z",
+  "checks": [
+    {
+      "name": "record",
+      "expected": "3 entries",
+      "actual": "3 entries",
+      "ok": true
+    },
+    {
+      "name": "race",
+      "expected": "ok: 23 entries",
+      "actual": "ok: 23 entries",
+      "ok": true
+    },
+    {
+      "name": "non-extractable",
+      "expected": "KeyError",
+      "actual": "KeyError",
+      "ok": true
+    },
+    {
+      "name": "conflict",
+      "expected": "ConflictError, count 23",
+      "actual": "ConflictError, count 23",
+      "ok": true
+    },
+    {
+      "name": "reload",
+      "expected": "23 entries",
+      "actual": "23 entries",
+      "ok": true
+    },
+    {
+      "name": "reload verify",
+      "expected": "ok: 23 entries",
+      "actual": "ok: 23 entries",
+      "ok": true
+    },
+    {
+      "name": "redaction",
+      "expected": false,
+      "actual": false,
+      "ok": true
+    },
+    {
+      "name": "cli-good",
+      "expected": 0,
+      "actual": 0,
+      "ok": true
+    },
+    {
+      "name": "cli-tamper",
+      "expected": "1 line 2",
+      "actual": "1 line 2",
+      "ok": true
+    },
+    {
+      "name": "cli-truncate",
+      "expected": "0 1 line 11",
+      "actual": "0 1 line 11",
+      "ok": true
+    }
+  ],
+  "firefox": "firefox/157.0.1",
+  "cliGood": "ok: 23 entries, head 0108ef8d81ad6d9969bfaa50f2fa1e638392778a9267450782428034c8783850",
+  "cliTamper": "line 2: bad-hash: Entry 1 was edited: its hash does not match its content.",
+  "cliTruncate": "line 11: truncated: The log has 10 entries. The checkpoint says 23.",
+  "passed": true
+}
