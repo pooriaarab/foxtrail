@@ -1,111 +1,114 @@
 # foxtrail
 
-A tamper-evident audit log for AI agent actions.
+[![npm version](https://img.shields.io/npm/v/foxtrail)](https://www.npmjs.com/package/foxtrail)
+[![Downloads/month](https://img.shields.io/npm/dm/foxtrail)](https://www.npmjs.com/package/foxtrail)
+[![License: MIT](https://img.shields.io/npm/l/foxtrail)](https://github.com/pooriaarab/foxtrail/blob/main/LICENSE)
+[![Zero runtime dependencies](https://img.shields.io/badge/runtime_dependencies-0-blue)](https://www.npmjs.com/package/foxtrail)
 
-foxtrail records what an agent does. Each entry links to the one before it and carries a keyed signature. Anyone who edits, deletes, or reorders an entry breaks the chain. The `foxtrail verify` command then names the first bad line.
+[Setup](#record-your-first-action) · [API reference](#runtime-surfaces) · [Comparisons](#compare) · [npm](https://www.npmjs.com/package/foxtrail)
+
+foxtrail is an open-source tamper-evident audit log for AI agent actions in Node.js and browsers.
+It chains entries with SHA-256 hashes and keyed authentication codes.
+It exports JSON Lines (JSONL) logs and verifies their integrity with an API or CLI.
 
 ## Install
 
 ```bash
-npm i foxtrail
+npm install foxtrail
 ```
 
-foxtrail needs Node 24 or later, or a browser with Web Crypto.
+Use Node.js 24 or later, or a browser with Web Crypto.
+The package includes TypeScript declarations and has zero runtime dependencies.
 
-## Example
+## Record your first action
 
-```js
-import { Log, MemoryStore, generateKey, secret } from "foxtrail";
-
-const log = new Log({ store: new MemoryStore(), key: await generateKey() });
-
-await log.append({
-  actor: "agent",
-  kind: "tool.call",
-  data: { tool: "login", token: secret("sk-live-123") },
-});
-await log.append({ actor: "agent", kind: "tool.call", data: { tool: "search", query: "flights" } });
-
-const checkpoint = await log.checkpoint();
-console.log(await log.verify({ checkpoint }));
-// { ok: true, count: 2, head: '…' }
-```
-
-The log never stores `sk-live-123`. It stores a salted hash in its place.
-
-To keep a log on disk, use the file store and check it with the CLI:
+Save this code as `record.mjs` in a new directory. No environment variables are required.
 
 ```js
-import { Log } from "foxtrail";
+import { Log, secret } from "foxtrail";
 import { FileStore, loadOrCreateKeyFile } from "foxtrail/node";
 
 const key = await loadOrCreateKeyFile("agent.key");
 const log = new Log({ store: new FileStore("agent.jsonl"), key });
-await log.append({ actor: "agent", kind: "start" });
+await log.append({
+  actor: "agent",
+  kind: "tool.call",
+  data: { tool: "login", token: secret("example-token") },
+});
+console.log((await log.verify()).ok); // true
 ```
 
 ```bash
+node record.mjs
 npx foxtrail verify agent.jsonl --key agent.key
 ```
 
-## Use cases
-
-| Who | What they build | How foxtrail helps |
-|---|---|---|
-| A developer of a browser agent | An agent that books travel in the user's browser | Each click and form fill goes in the log. The user can check later what the agent did. |
-| A compliance team | Evidence that an AI tool acted within policy | The exported JSONL file and the key let an auditor check every entry. The auditor must hold the key, and anyone with the key can also forge entries. |
-| A CI maintainer | A bot that opens pull requests and runs commands | The bot writes to a JSONL file. The CI job runs `foxtrail verify` and fails on any edit. |
-| A user of MCP servers | A record of every tool call that an MCP client makes | The client logs each call with `kind: "mcp.call"`. Secrets in the arguments become hashes. |
-| A support engineer | A way to replay what an agent did before a bug | The log has the order and the time of each step. A checkpoint shows if the end of the log is missing. |
-| A security reviewer | A check that nobody cut the tail of a log | The reviewer keeps a checkpoint somewhere else. `verify` reports `truncated` if entries are gone. |
+Success prints `true`, then `ok: 1 entries, head <hash>` on the first run.
+Keep `agent.key` private. Anyone with that key can forge entries.
+`secret()` stores a salted hash instead of the token. Guessable values remain vulnerable to guessing.
 
 ## How it works
 
-Each entry holds the hash of the entry before it. The hash covers the canonical JSON of the entry. The MAC is an HMAC of that hash. A person with write access can rebuild the hashes, but cannot make valid MACs without the key.
-
-```mermaid
-flowchart LR
-  G["GENESIS<br/>000…0"] --> E0
-  subgraph E0["entry 0"]
-    direction TB
-    a0["seq, ts, actor, kind, data"]
-    p0["prev = GENESIS"]
-    h0["hash = SHA-256(canonical JSON)"]
-    m0["mac = HMAC(key, hash)"]
-  end
-  E0 -- "hash becomes prev" --> E1
-  subgraph E1["entry 1"]
-    direction TB
-    a1["seq, ts, actor, kind, data"]
-    p1["prev = hash of entry 0"]
-    h1["hash"]
-    m1["mac"]
-  end
-  E1 -- "hash becomes prev" --> E2["entry 2 …"]
-  E2 -.-> C["checkpoint: count + head hash + mac<br/>(store it somewhere else)"]
+```text
+Action -> redact selected data -> canonical JSON -> SHA-256 -> HMAC
+                                      |
+entry 0 hash -> entry 1 prev/hash -> entry 2 prev/hash -> ...
+                                      |
+                         signed checkpoint kept elsewhere
 ```
 
-`verify()` walks the log from the first entry and stops at the first fault.
+HMAC means hash-based message authentication code.
+Verification checks sequence, previous hash, content hash, HMAC, and timestamp order.
+A retained checkpoint detects a missing tail. There are nine verification failure reasons.
 
-```mermaid
-sequenceDiagram
-  participant V as verify()
-  participant L as Log entries
-  V->>V: check the checkpoint MAC
-  loop each entry i
-    V->>L: read entry i
-    V->>V: seq = i, prev = last hash
-    V->>V: SHA-256 of content = hash
-    V->>V: HMAC check of mac
-    V->>V: ts not lower than before
-  end
-  V->>V: compare count and head with the checkpoint
-  V-->>V: ok, or the index and reason of the first fault
-```
+## Why it exists
 
-Reasons: `malformed`, `bad-sequence`, `bad-prev`, `bad-hash`, `bad-mac`, `bad-time`, `truncated`, `checkpoint-mismatch`, `bad-checkpoint`. Every failure mode has a test. See [docs/failure-modes.md](docs/failure-modes.md).
+Agent actions need an inspectable history with explicit integrity checks.
+foxtrail keeps that history inside an application or a local file.
+immudb supplies a database with cryptographic verification. Cossack Labs Acra protects audit logs for its security services.
 
-## API
+## Compare
+
+Checked on 2026-10-14 against [immudb's documentation](https://immudb.io/docs/immudb/)
+and [Cossack Labs Acra's logging guide](https://docs.cossacklabs.com/acra/security-controls/security-logging-and-events/).
+
+| Scope | foxtrail | immudb | Cossack Labs Acra |
+|---|---|---|---|
+| Main surface | Application audit-log library | Database with cryptographic verification | Data-security services with protected audit logs |
+| Log data | Application-supplied actions | Stored database history | Acra service security and access events |
+| Verification entry | JavaScript API or foxtrail CLI | Database proof and verification APIs | acra-log-verifier utility |
+
+## Coverage
+
+| Integration or store | Status | Scope |
+|---|---|---|
+| Node.js / FileStore | ✓ | JSONL file and verify CLI |
+| IndexedDB / IdbStore | ✓ | Browser entries and stored keys |
+| MemoryStore | ✓ | Process-local entries |
+| Mozilla Firefox | ✓ | Demo extension and E2E runner |
+| foxloop / foxgate | scaffold | Planned consumers; no adapters exported |
+
+There are three store implementations and one CLI command.
+The store and verification paths are source-checked. Local tests exercise their behavior.
+No external-service credentials were checked. Planned fox consumers are not verified integrations.
+
+## Common use cases
+
+1. Node.js agent builders: log tool calls to JSONL and verify the exported history.
+2. Firefox extension authors: retain browser actions and keys in IndexedDB.
+3. CI maintainers: run `foxtrail verify` against a bot's log before accepting its output.
+4. MCP client developers: explicitly append tool-call records from their own client code.
+5. Security reviewers: retain checkpoints separately to detect a missing log tail.
+
+## Features
+
+- **Integrity checks:** verify hash links and keyed authentication through [the API or CLI](#runtime-surfaces).
+- **Checkpoints:** sign log count and head hash with [log.checkpoint](#runtime-surfaces).
+- **Selected-data redaction:** replace marked values or configured key names with [salted hashes](#runtime-surfaces).
+- **JSONL transfer:** export logs and verify imports into empty stores with [Log](#runtime-surfaces).
+- **Storage choice:** use [memory, IndexedDB, or files](#coverage).
+
+## Runtime surfaces
 
 ```ts
 import { Log, MemoryStore, IdbStore, idbKey, generateKey, importKey, exportKeyHex,
@@ -143,38 +146,10 @@ The key file holds the key as hex. Without `--key`, the CLI reads `FOXTRAIL_KEY`
 | 1 | The log is bad. The first bad line is on stderr, for example `line 3: bad-hash: Entry 2 was edited…`. |
 | 2 | The command cannot run: no key, no file, or a wrong option. |
 
-## Firefox extension
 
-The `extension/` folder holds an add-on for Firefox that shows foxtrail at work. Its popup records sample events, races two writers on one `IdbStore`, verifies the log, and exports JSONL and a checkpoint.
-
-Install from AMO: [addons.mozilla.org/firefox/addon/foxtrail](https://addons.mozilla.org/firefox/addon/foxtrail/)
-(pending AMO review; the link works after approval).
-
-Build and test it:
-
-```bash
-pnpm install
-pnpm build:ext   # writes dist-ext/
-pnpm e2e         # real Firefox: record, export, verify with the CLI, tamper, verify again
-```
-
-The E2E test writes `artifacts/e2e-<date>.json`. The add-on's key is extractable so that the CLI can verify the export. Use `generateKey()` without `extractable` when only your own code verifies the log.
-
-## Firefox APIs used
-
-| API | Why |
-|---|---|
-| [`SubtleCrypto.digest`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest) | SHA-256 of each entry. |
-| [`SubtleCrypto.sign` and `verify` (HMAC)](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/sign) | The MAC of each entry and each checkpoint. `verify` compares in constant time. |
-| [`SubtleCrypto.generateKey`](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/generateKey) | A key that code cannot export. |
-| [`IndexedDB`](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | The browser store, and the place where the `CryptoKey` object lives. |
-| [`URL.createObjectURL`](https://developer.mozilla.org/en-US/docs/Web/API/URL/createObjectURL) | The download link for the JSONL export. |
-| [`unlimitedStorage` permission](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/permissions) | The browser does not evict the log. |
-| [`action` popup](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/action) | The demo interface. |
-
-The library itself uses only Web Crypto and IndexedDB, so it also runs in other browsers.
-
-## Limits
+The root entry also exports `canonicalize`, `GENESIS`, `Secret`, and six error classes.
+`log.entries()` reads all stored entries. There is no Model Context Protocol (MCP) server.
+## Delivery/behavior limits
 
 - foxtrail is tamper-evident, not tamper-proof. A person with the key can rewrite the whole log.
 - HMAC is a shared secret. Anyone who verifies a log can also forge one. Public-key signatures (Ed25519) are not built.
@@ -187,21 +162,90 @@ The library itself uses only Web Crypto and IndexedDB, so it also runs in other 
 - The file lock is a lock file with an owner token. A crashed process leaves it for 10 seconds before the next writer moves it away. A writer that loses its lock fails with `StoreError`.
 - A JSONL line with a repeated key is refused, and a checkpoint file must hold an object.
 - Whitespace and key order in a JSONL line are not signed. Only the values are.
-- Only Firefox runs the E2E test. The package is not on npm yet.
+- Only Firefox runs the browser E2E test. Other browsers are not verified here.
 
-## Part of the fox primitives
+- Appends stop after 100 conflict attempts. The default canonical entry limit is 1 MiB.
 
-```mermaid
-graph LR
-  foxtrail --> foxloop
-  foxgate -. "planned: callback" .-> foxtrail
-  click foxtrail "https://github.com/pooriaarab/foxtrail"
-  click foxloop "https://github.com/pooriaarab/foxloop"
-  click foxgate "https://github.com/pooriaarab/foxgate"
-```
+## Integration guides
 
-foxtrail depends on no other fox repo. [foxloop](https://github.com/pooriaarab/foxloop) will record its steps with it. [foxgate](https://github.com/pooriaarab/foxgate) will call it through a callback later.
+### Node.js files and CLI keys
+
+Use `FileStore` and `loadOrCreateKeyFile` from `foxtrail/node` as shown in [the quickstart](#record-your-first-action).
+Without `--key`, the CLI reads a hexadecimal key from `FOXTRAIL_KEY`.
+The CLI does not load `.env` automatically. Use Node's `--env-file` when invoking the built CLI directly.
+Protect environment files as carefully as key files.
+
+### Firefox extension
+
+Clone this public repository, run `pnpm install`, then `pnpm build:ext`.
+Load `dist-ext/manifest.json` as a temporary add-on from `about:debugging`.
+The popup records sample events, races two IndexedDB writers, verifies entries, and exports JSONL and a checkpoint.
+Its key is extractable for CLI verification. The library's generated keys are non-extractable by default.
+
+### Browser storage
+
+Use `IdbStore.open(name)` and `idbKey(name)` in a bundled browser page.
+Keep checkpoints outside the log store when tail-deletion detection matters.
+Same-origin scripts can use stored browser keys even when their bytes are non-extractable.
+
+## Status
+
+Version 0.1.3 is an early release. APIs and entry formats can change before 1.0.
+[Report issues on GitHub](https://github.com/pooriaarab/foxtrail/issues).
+Public case studies are not yet published in this repository.
+
+## FAQ
+
+### What is foxtrail?
+
+foxtrail records application-supplied agent actions in a keyed hash chain.
+It verifies stored entries through JavaScript or the CLI.
+
+### Which integrations are verified?
+
+foxtrail implements FileStore, IdbStore, MemoryStore, and a Firefox demo.
+This rewrite checks source and local tests; foxloop and foxgate consumers remain planned.
+
+### Does foxtrail provide a managed audit service?
+
+foxtrail runs in your application or browser.
+It does not provide a managed collector or log-storage endpoint.
+
+### How is foxtrail different from immudb?
+
+foxtrail is an embedded audit-log library with three stores and a JSONL CLI.
+immudb is a database with cryptographic proofs and verification.
+
+### How is foxtrail different from Cossack Labs Acra?
+
+foxtrail records actions supplied by application code.
+Acra protects audit logs produced by its data-security services.
+
+### Can someone with the key forge a log?
+
+foxtrail uses a shared HMAC key for writing and verification.
+Anyone with that key can create valid replacement entries.
+
+### Can foxtrail detect a deleted final entry?
+
+foxtrail detects a missing tail when verification receives an earlier retained checkpoint.
+Store that checkpoint separately from the log.
+
+### Does foxtrail automatically capture agent actions?
+
+foxtrail records only the entries your application appends.
+It provides no automatic browser-action or MCP interception adapter.
+
+### Does foxtrail encrypt logged data?
+
+foxtrail authenticates entries and hashes selected secret values.
+It does not encrypt the whole log, and unmarked data remains readable.
+
+## Testing
+
+`pnpm ci:local` runs lint, typecheck, tests, builds, extension lint, and listing checks.
+`pnpm e2e` records and exports entries in Firefox, verifies them with the CLI, then checks tamper detection.
 
 ## License
 
-MIT
+[MIT](https://github.com/pooriaarab/foxtrail/blob/main/LICENSE)
