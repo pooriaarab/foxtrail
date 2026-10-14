@@ -1,7 +1,7 @@
 {
   "name": "foxtrail",
   "version": "0.1.3",
-  "description": "A tamper-evident audit log for AI agent actions.",
+  "description": "Tamper-evident AI agent audit logs for Node.js and Firefox, with HMAC hash chains, IndexedDB and JSONL stores, secret redaction, and CLI verification.",
   "type": "module",
   "license": "MIT",
   "author": "Pooria Arab",
@@ -49,5 +49,21 @@
   },
   "bin": {
     "foxtrail": "./dist/bin.js"
-  }
+  },
+  "keywords": [
+    "audit-log",
+    "ai-agent",
+    "tamper-evident",
+    "hmac",
+    "sha256",
+    "jsonl",
+    "indexeddb",
+    "nodejs",
+    "firefox",
+    "mozilla",
+    "web-crypto",
+    "redaction",
+    "typescript",
+    "cli"
+  ]
 }
